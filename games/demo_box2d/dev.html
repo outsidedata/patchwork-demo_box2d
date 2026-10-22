@@ -1,0 +1,406 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>demo_box2d dev</title>
+    <style>
+      body { margin: 0; background: #0b0b0e; display: grid; place-items: center; height: 100vh }
+      canvas { grid-area: 1 / 1 }
+      .lil-gui.root { max-height: 100vh; overflow-y: auto }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      // The demo of box2d: index.html, the manager truth and the scenes its row names all in this tab,
+      // one seat on them over a loopback, stepped on the page's clock, and a panel holding every
+      // setting of `world.box2d` box2d reads, the numbers of the explosion and the wind the seat sets
+      // off, and render2d's own settings. `?scene=<scene>` enters that scene. The truths are kept on
+      // `window.__scenes` and the page on `window.__page` for the profilers (benchmarking-a-game). The
+      // frame rate is three's stats panel, the stats plugin, at the top left.
+      //
+      // The keys are the game's own (`player.client.ts`): the arrows drive the car, a click spawns the
+      // next falling body under the pointer, Space blows the world apart under it and F turns the wind
+      // on and off; W A S D and the canvas's edges pan the camera and the wheel zooms it (pancamera).
+      // Keys typed into the panel, and clicks, moves and the wheel over it, reach neither this page nor
+      // the game.
+      //
+      // The panel tweaks a copy of the scene's `world.box2d`. A change is laid into the truth a quarter
+      // second after the last one, as box2d takes a change of a running world: a world setting on the
+      // box2d row, which box2d pushes into the world; a joint kind's setting on every row of that kind,
+      // which box2d pushes into each joint; a body kind's setting into every body of that kind through
+      // Box2D's own setters (b2Body_Set…, b2Shape_SetDensity, b2Shape_SetSurfaceMaterial) on `bodyOf`,
+      // and into `world.box2d.kinds`, which every body spawned after is made from. Every body is then
+      // woken, so a sleeping pile shows the change. What Box2D reads only when the world or a body is
+      // made (FIRST: the world's `capacity`, a kind's `allowFastRotation`, the static bodies' surface
+      // materials) loads the page again on the panel's copy, kept for this tab in its sessionStorage.
+      // The explosion's and the wind's numbers are the definitions' (`assets/demo_box2d.json`), changed
+      // in the tab's one decoded copy, which the rules read each step. Nothing is written to disk:
+      // `copy box2d JSON` and `copy demo_box2d.json` copy the panel's numbers in the shape of the scene's
+      // `world.box2d` and of the definitions file, and `reset to the file` puts the files' back.
+      //
+      // The render2d folder: the ground's scale and the height's step, the camera's zoom and the point
+      // it looks at (which pancamera moves too), each layer's parallax and sort, the fit, which loads
+      // the page again with `?fit=`, as render2d reads it when it is made, and the background.
+      import { boot } from '#engine/engine.ts'
+      import { accept, load, manager, link, view } from '#addons/scenemanager/scenemanager.addon.ts'
+      import { loopback } from '#addons/loopback/loopback.addon.ts'
+      import { prepared } from '#plugins/loader/loader.sim.ts'
+      import { b2, bodyOf } from '#plugins/box2d/box2d.sim.ts'
+      import GUI from 'lil-gui'
+      import { sim } from './demo_box2d.sim.ts'
+      import { scene as main } from './main.sim.ts'
+      import file from './demo_box2d.scene.json'
+
+      const clone = v => JSON.parse(JSON.stringify(v))
+      const params = new URLSearchParams(location.search)
+      file.prefabs.scenemanager.entry = params.get('scene') ?? file.prefabs.scenemanager.entry
+
+      // The file's numbers, as they were, for `reset to the file` and the copies.
+      const fileOwn = clone(main.world.box2d)
+      const file2d = clone(main.world.render2d)
+      // The panel's copy of world.box2d a change to a FIRST setting loaded the page again on.
+      const KEPT = 'demo_box2d dev box2d'
+      let kept
+      try { kept = JSON.parse(sessionStorage.getItem(KEPT) ?? 'null') } catch { kept = null }
+      if (kept) main.world.box2d = kept
+      // The fit, from the address, before render2d is made.
+      if (params.has('fit')) {
+        if (params.get('fit') === 'none') delete main.world.render2d.fit
+        else main.world.render2d.fit = params.get('fit')
+      }
+      // The tab's one decoded copy of the definitions, which every rule and look reads.
+      const defs = await prepared(main.world, main.world.defs)
+      const fileDefs = clone(defs)
+
+      const dt = file.prefabs.engine.dt
+      const truth = boot(file, sim)
+      window.__scenes = await load(truth, import.meta.url)
+      let client
+      const page = view(link(loopback(accept(manager(truth)))), file, import.meta.url, (me, scene) => {
+        client = me
+        for (const surface of [me.plugins.render3d ?? me.plugins.render2d, me.plugins.ui]) {
+          if (!surface) continue
+          const canvas = document.createElement('canvas')
+          canvas.width = scene.prefabs.engine.width
+          canvas.height = scene.prefabs.engine.height
+          document.body.appendChild(canvas)
+          surface.mount(canvas)
+        }
+        me.plugins.stats?.mount(document.body)
+      })
+      window.__page = page
+      // The truth of the scene the seat is on, and its rows as a rule's `w` finds them, for bodyOf.
+      const room = () => window.__scenes.get(chosen.scene)
+      const asked = () => ({ world: room().world, find: kind => room().rows.find(r => r.kind === kind) })
+      const rowsOf = kind => room()?.rows.filter(r => r.kind === kind) ?? []
+
+      // The panel: the scene, chosen from the manager's table, the page loaded again on it.
+      const gui = new GUI({ title: 'demo_box2d dev' })
+      for (const type of ['keydown', 'keyup', 'wheel', 'click', 'mousedown', 'mouseup', 'mousemove', 'contextmenu']) gui.domElement.addEventListener(type, e => e.stopPropagation())
+      const chosen = { scene: file.prefabs.scenemanager.entry }
+      const reload = (key, value) => {
+        const url = new URL(location.href)
+        url.searchParams.set(key, value)
+        location.href = url.href
+      }
+      gui.add(chosen, 'scene', Object.keys(file.prefabs.scenemanager.scenes)).onChange(s => reload('scene', s))
+
+      // ---------- box2d ----------
+
+      // Box2D's own defaults, shown for every setting the file leaves out. The two the world def has no
+      // field for are read off a world made and freed for it.
+      const WORLD_DEF = b2.b2DefaultWorldDef()
+      const spare = b2.b2CreateWorld(b2.b2DefaultWorldDef())
+      const WORLD_SET = { enableWarmStarting: b2.b2World_IsWarmStartingEnabled(spare), contactRecycleDistance: b2.b2World_GetContactRecycleDistance(spare) }
+      b2.b2DestroyWorld(spare)
+      const BODY_DEF = b2.b2DefaultBodyDef()
+      const SHAPE_DEF = b2.b2DefaultShapeDef()
+      const JOINT_DEF = {
+        distance: b2.b2DefaultDistanceJointDef(), prismatic: b2.b2DefaultPrismaticJointDef(),
+        revolute: b2.b2DefaultRevoluteJointDef(), wheel: b2.b2DefaultWheelJointDef(),
+        motor: b2.b2DefaultMotorJointDef(), mover: b2.b2DefaultMoverJointDef(), pogo: b2.b2DefaultPogoJointDef(),
+        weld: b2.b2DefaultWeldJointDef(), filter: b2.b2DefaultFilterJointDef(),
+      }
+      const TYPE = { dynamic: b2.b2BodyType.b2_dynamicBody, kinematic: b2.b2BodyType.b2_kinematicBody, static: b2.b2BodyType.b2_staticBody }
+      const typeName = t => Object.keys(TYPE).find(k => TYPE[k].value === t.value)
+
+      // The world's settings a live world takes, which the box2d row carries (box2d.sim.ts, the rows).
+      const WORLD_LIVE = ['gravity', 'subStepCount', 'restitutionThreshold', 'restitutionIterations', 'enableRestitutionPropagation', 'hitEventThreshold', 'contactHertz', 'contactDampingRatio', 'contactSpeed', 'maximumLinearSpeed', 'enableSleep', 'enableContinuous', 'enableWarmStarting', 'contactRecycleDistance']
+      // A joint's settings a live joint takes, by its type, which its row carries (box2d.sim.ts, JOINT_LIVE).
+      const BASE_LIVE = ['collideConnected', 'constraintHertz', 'constraintDampingRatio', 'forceThreshold', 'torqueThreshold']
+      const JOINT_LIVE = {
+        distance: ['length', 'enableSpring', 'lowerSpringForce', 'upperSpringForce', 'hertz', 'dampingRatio', 'enableLimit', 'minLength', 'maxLength', 'enableMotor', 'maxMotorForce', 'motorSpeed'],
+        prismatic: ['enableSpring', 'hertz', 'dampingRatio', 'targetTranslation', 'enableLimit', 'lowerTranslation', 'upperTranslation', 'enableMotor', 'maxMotorForce', 'motorSpeed'],
+        revolute: ['targetAngle', 'enableSpring', 'hertz', 'dampingRatio', 'enableLimit', 'lowerAngle', 'upperAngle', 'enableMotor', 'maxMotorTorque', 'motorSpeed'],
+        wheel: ['enableSpring', 'hertz', 'dampingRatio', 'enableLimit', 'lowerTranslation', 'upperTranslation', 'enableMotor', 'maxMotorTorque', 'motorSpeed'],
+      }
+      // The joint settings a rule of the game writes on its rows every step, shown as the rule's own
+      // number instead (the car's `spin`, the slide's `speed`).
+      const DRIVEN = { axle: ['motorSpeed'], slide: ['motorSpeed'] }
+
+      // Ranges over what is useful, by the setting's name, with the unit for its label.
+      const RANGE = {
+        subStepCount: [1, 16, 1, 'substeps'], restitutionThreshold: [0, 10, 0.01, 'm/s'], restitutionIterations: [0, 16, 1, ''],
+        hitEventThreshold: [0, 20, 0.01, 'm/s'], contactHertz: [0, 240, 0.5, 'Hz'], contactDampingRatio: [0, 40, 0.1, ''],
+        contactSpeed: [0, 20, 0.01, 'm/s'], maximumLinearSpeed: [1, 2000, 1, 'm/s'], contactRecycleDistance: [0, 1, 0.001, 'm'],
+        linearDamping: [0, 10, 0.01, '/s'], angularDamping: [0, 10, 0.01, '/s'], gravityScale: [-2, 4, 0.01, '×'],
+        sleepThreshold: [0, 2, 0.005, 'm/s'], safetyFactor: [0, 1, 0.01, ''],
+        density: [0, 20, 0.01, 'kg/m²'], friction: [0, 2, 0.01, ''], restitution: [0, 1.2, 0.01, ''],
+        rollingResistance: [0, 1, 0.005, ''], tangentSpeed: [-20, 20, 0.1, 'm/s'],
+        forceThreshold: [0, 5000, 1, 'N'], torqueThreshold: [0, 5000, 1, 'N·m'], constraintHertz: [0, 240, 0.5, 'Hz'], constraintDampingRatio: [0, 40, 0.1, ''],
+        length: [0, 3, 0.01, 'm'], minLength: [0, 3, 0.01, 'm'], maxLength: [0, 10, 0.01, 'm'],
+        lowerSpringForce: [-5000, 0, 1, 'N'], upperSpringForce: [0, 5000, 1, 'N'],
+        hertz: [0, 30, 0.1, 'Hz'], dampingRatio: [0, 5, 0.01, ''],
+        targetTranslation: [-5, 5, 0.01, 'm'], lowerTranslation: [-5, 5, 0.01, 'm'], upperTranslation: [-5, 5, 0.01, 'm'],
+        targetAngle: [-3.14, 3.14, 0.01, 'rad'], lowerAngle: [-3.14, 3.14, 0.01, 'rad'], upperAngle: [-3.14, 3.14, 0.01, 'rad'],
+        maxMotorForce: [0, 3000, 1, 'N'], maxMotorTorque: [0, 200, 0.1, 'N·m'], motorSpeed: [-30, 30, 0.1, '/s'],
+        staticShapeCount: [0, 4096, 1, ''], dynamicShapeCount: [0, 4096, 1, ''], staticBodyCount: [0, 4096, 1, ''], dynamicBodyCount: [0, 4096, 1, ''], contactCount: [0, 16384, 1, ''],
+      }
+      const label = key => (RANGE[key]?.[3] ? `${key} ${RANGE[key][3]}` : key)
+
+      // The panel's copy of world.box2d, in the file's shape (what the copy gives), and beside it what
+      // every control shows: the copy over Box2D's defaults.
+      let own = clone(main.world.box2d)
+      const shownWorld = () => ({ ...WORLD_DEF, ...WORLD_SET, capacity: { ...WORLD_DEF.capacity, ...own.capacity }, ...Object.fromEntries(Object.entries(own).filter(([k]) => !['capacity', 'static', 'kinds', 'joints', 'mods', 'chunk'].includes(k))) })
+      const bodyShown = k => {
+        const kind = own.kinds[k], shape = kind.shapes[0]
+        return {
+          type: kind.type ?? typeName(BODY_DEF.type),
+          ...Object.fromEntries(['linearDamping', 'angularDamping', 'gravityScale', 'sleepThreshold', 'safetyFactor', 'enableSleep', 'isBullet', 'allowFastRotation', 'enableContactRecycling'].map(f => [f, kind[f] ?? BODY_DEF[f]])),
+          motionLocks: { ...BODY_DEF.motionLocks, ...kind.motionLocks },
+          density: shape.density ?? SHAPE_DEF.density,
+          material: { ...SHAPE_DEF.material, ...shape.material },
+        }
+      }
+      const jointShown = k => {
+        const j = own.joints[k], d = JOINT_DEF[j.type]
+        return Object.fromEntries([...BASE_LIVE.map(f => [f, j[f] ?? d.base[f]]), ...JOINT_LIVE[j.type].map(f => [f, j[f] ?? d[f]])])
+      }
+      const staticShown = i => own.static[i].shapes.map(s => ({ ...SHAPE_DEF.material, ...s.material }))
+      let shown = { world: shownWorld(), kinds: {}, joints: {}, statics: own.static.map((_, i) => staticShown(i)) }
+      for (const k of Object.keys(own.kinds)) shown.kinds[k] = bodyShown(k)
+      for (const k of Object.keys(own.joints)) shown.joints[k] = jointShown(k)
+
+      // The panel's copy kept for this tab and the page loaded again on it, for a FIRST setting.
+      const rebuild = () => {
+        try { sessionStorage.setItem(KEPT, JSON.stringify(own)) } catch {}
+        location.reload()
+      }
+
+      // The panel's copy laid into the truth a quarter second after the last change.
+      let timer
+      const apply = () => {
+        clearTimeout(timer)
+        timer = setTimeout(lay, 250)
+      }
+      function lay() {
+        const r = room()
+        if (!r) return
+        for (const world of [r.world, client?.plugins.wire.scene.world]) if (world) Object.assign(world.box2d, clone(own))
+        const row = r.rows.find(x => x.kind === 'box2d')
+        for (const f of WORLD_LIVE) row.data[f] = clone(shown.world[f])
+        for (const [k, j] of Object.entries(shown.joints)) {
+          const type = own.joints[k].type
+          for (const jr of rowsOf(k)) for (const f of [...BASE_LIVE, ...JOINT_LIVE[type]]) if (!DRIVEN[k]?.includes(f)) jr.data[f] = j[f]
+        }
+        const w = asked()
+        for (const [k, b] of Object.entries(shown.kinds)) for (const br of rowsOf(k)) {
+          let id
+          try { id = bodyOf(w, br) } catch { continue }
+          b2.b2Body_SetType(id, TYPE[b.type])
+          b2.b2Body_SetLinearDamping(id, b.linearDamping)
+          b2.b2Body_SetAngularDamping(id, b.angularDamping)
+          b2.b2Body_SetGravityScale(id, b.gravityScale)
+          b2.b2Body_SetSleepThreshold(id, b.sleepThreshold)
+          b2.b2Body_SetSafetyFactor(id, b.safetyFactor)
+          b2.b2Body_EnableSleep(id, b.enableSleep)
+          b2.b2Body_SetBullet(id, b.isBullet)
+          b2.b2Body_EnableContactRecycling(id, b.enableContactRecycling)
+          b2.b2Body_SetMotionLocks(id, { ...b.motionLocks })
+          const shapes = b2.b2Body_GetShapes(id)
+          for (let i = 0; i < shapes.size(); i++) {
+            const s = shapes.get(i)
+            b2.b2Shape_SetDensity(s, b.density, true)
+            b2.b2Shape_SetSurfaceMaterial(s, { ...b2.b2Shape_GetSurfaceMaterial(s), ...b.material })
+          }
+          shapes.delete()
+        }
+        for (const k of Object.keys(shown.kinds)) for (const br of rowsOf(k)) {
+          try { b2.b2Body_SetAwake(bodyOf(w, br), true) } catch {}
+        }
+      }
+
+      // A control on what the panel shows, which writes the copy with `write` and lays it in, or, for
+      // a FIRST setting, loads the page again on it.
+      const ctl = (folder, o, key, write, first = false, name = label(key)) => {
+        const v = o[key]
+        const c = typeof v === 'boolean' ? folder.add(o, key) : folder.add(o, key, RANGE[key][0], RANGE[key][1], RANGE[key][2])
+        return c.name(first ? `${name} (reloads)` : name).onChange(x => { write(x); first ? rebuild() : apply() })
+      }
+      // The object at a path of the copy, made where the file has none.
+      const at = (o, ...path) => path.reduce((x, k) => (x[k] ??= {}), o)
+
+      const bf = gui.addFolder('box2d')
+      const wf = bf.addFolder('world')
+      const gravity = { x: shown.world.gravity[0], y: shown.world.gravity[1] }
+      const setGravity = () => { own.gravity = [gravity.x, gravity.y]; shown.world.gravity = [gravity.x, gravity.y]; apply() }
+      wf.add(gravity, 'x', -30, 30, 0.1).name('gravity x m/s²').onChange(setGravity)
+      wf.add(gravity, 'y', -30, 30, 0.1).name('gravity y m/s²').onChange(setGravity)
+      for (const f of WORLD_LIVE.filter(f => f !== 'gravity')) ctl(wf, shown.world, f, x => { own[f] = x })
+      const cf = wf.addFolder('capacity')
+      for (const f of Object.keys(shown.world.capacity)) ctl(cf, shown.world.capacity, f, x => { at(own, 'capacity')[f] = x }, true)
+      cf.close()
+
+      const kf = bf.addFolder('kinds')
+      for (const k of Object.keys(shown.kinds)) {
+        const s = shown.kinds[k], f = kf.addFolder(k)
+        f.add(s, 'type', Object.keys(TYPE)).onChange(x => { own.kinds[k].type = x; apply() })
+        ctl(f, s, 'density', x => { own.kinds[k].shapes[0].density = x })
+        for (const m of ['friction', 'restitution', 'rollingResistance', 'tangentSpeed']) ctl(f, s.material, m, x => { at(own.kinds[k].shapes[0], 'material')[m] = x })
+        for (const b of ['linearDamping', 'angularDamping', 'gravityScale', 'sleepThreshold', 'safetyFactor', 'enableSleep', 'isBullet', 'enableContactRecycling']) ctl(f, s, b, x => { own.kinds[k][b] = x })
+        ctl(f, s, 'allowFastRotation', x => { own.kinds[k].allowFastRotation = x }, true)
+        for (const l of ['linearX', 'linearY', 'angularZ']) ctl(f, s.motionLocks, l, x => { at(own.kinds[k], 'motionLocks')[l] = x }, false, `lock ${l}`)
+        f.close()
+      }
+      kf.close()
+
+      const jf = bf.addFolder('joints')
+      for (const k of Object.keys(shown.joints)) {
+        const s = shown.joints[k], type = own.joints[k].type, f = jf.addFolder(`${k} (${type})`)
+        for (const field of [...JOINT_LIVE[type], ...BASE_LIVE]) {
+          if (DRIVEN[k]?.includes(field)) continue
+          ctl(f, s, field, x => { own.joints[k][field] = x })
+        }
+        if (k === 'axle') f.add(defs.car, 'spin', 0, 60, 0.5).name('motorSpeed the car drives at /s')
+        if (k === 'slide') {
+          f.add(defs.slide, 'speed', 0, 10, 0.05).name('motorSpeed the slide runs at m/s')
+          f.add(defs.slide, 'margin', 0, 0.5, 0.005).name('slide turns within m')
+        }
+        f.close()
+      }
+      jf.close()
+
+      const sf = bf.addFolder('static bodies')
+      own.static.forEach((b, i) => b.shapes.forEach((sh, n) => {
+        const f = sf.addFolder(`static ${i}: ${Object.keys(sh).find(g => ['circle', 'capsule', 'segment', 'box', 'polygon', 'chain'].includes(g))}`)
+        for (const m of ['friction', 'restitution', 'rollingResistance', 'tangentSpeed']) ctl(f, shown.statics[i][n], m, x => { at(own.static[i].shapes[n], 'material')[m] = x }, true)
+        f.close()
+      }))
+      sf.close()
+
+      // The explosion's and the wind's numbers, the definitions', read by the rules each step.
+      const af = bf.addFolder('explosion and wind')
+      af.add(defs.player.blast, 'radius', 0.5, 20, 0.1).name('explosion radius m')
+      af.add(defs.player.blast, 'falloff', 0, 10, 0.1).name('explosion falloff m')
+      af.add(defs.player.blast, 'impulsePerLength', 0, 40, 0.1).name('explosion impulse N·s/m')
+      af.add(defs.wind.wind, 0, -60, 60, 0.5).name('wind x m/s')
+      af.add(defs.wind.wind, 1, -60, 60, 0.5).name('wind y m/s')
+      af.add(defs.wind, 'drag', 0, 5, 0.01).name('wind drag')
+      af.add(defs.wind, 'lift', 0, 5, 0.01).name('wind lift')
+
+      gui.add({ copy: () => navigator.clipboard?.writeText(JSON.stringify(own, null, 2)) }, 'copy').name('copy box2d JSON')
+      gui.add({ copy: () => navigator.clipboard?.writeText(JSON.stringify(defs, null, 2)) }, 'copy').name('copy demo_box2d.json')
+      // The files' numbers written back into what every control holds, key by key, so each keeps its
+      // object, and laid in; a FIRST setting the page was loaded again on loads it again on the file.
+      const into = (to, from) => {
+        for (const [k, v] of Object.entries(from)) {
+          if (v && typeof v === 'object' && to[k] && typeof to[k] === 'object') into(to[k], v)
+          else to[k] = v
+        }
+      }
+      gui.add({ reset: () => {
+        into(defs, fileDefs)
+        if (kept) {
+          try { sessionStorage.removeItem(KEPT) } catch {}
+          location.reload()
+          return
+        }
+        own = clone(fileOwn)
+        into(shown.world, shownWorld())
+        Object.assign(gravity, { x: shown.world.gravity[0], y: shown.world.gravity[1] })
+        for (const k of Object.keys(shown.kinds)) into(shown.kinds[k], bodyShown(k))
+        for (const k of Object.keys(shown.joints)) into(shown.joints[k], jointShown(k))
+        for (const c of gui.controllersRecursive()) c.updateDisplay()
+        apply()
+      } }, 'reset').name('reset to the file')
+
+      // ---------- render2d ----------
+
+      const rf = gui.addFolder('render2d')
+      const r2d = () => client?.plugins.render2d
+      const table2d = () => client?.plugins.wire.scene.world.render2d
+      const own2d = clone(main.world.render2d)
+      const scale = { x: own2d.ground[0][0], y: own2d.ground[1][1], upX: own2d.up[0], upY: own2d.up[1] }
+      const setScale = () => {
+        own2d.ground[0][0] = scale.x
+        own2d.ground[1][1] = scale.y
+        own2d.up = [scale.upX, scale.upY]
+        const t = table2d()
+        if (!t) return
+        t.ground[0][0] = scale.x
+        t.ground[1][1] = scale.y
+        t.up[0] = scale.upX
+        t.up[1] = scale.upY
+      }
+      rf.add(scale, 'x', 5, 120, 1).name('ground x px/m').onChange(setScale)
+      rf.add(scale, 'y', -120, -5, 1).name('ground y px/m (y up)').onChange(setScale)
+      rf.add(scale, 'upX', -120, 120, 1).name('up x px').onChange(setScale)
+      rf.add(scale, 'upY', -120, 120, 1).name('up y px').onChange(setScale)
+      // The camera as render2d draws it, kept up with each frame, since pancamera moves it too.
+      const cam = { zoom: own2d.zoom, x: own2d.look[0], y: own2d.look[1] }
+      rf.add(cam, 'zoom', 0.1, 4, 0.01).listen().onChange(z => { own2d.zoom = z; r2d()?.zoom(z) })
+      rf.add(cam, 'x', -40, 40, 0.1).name('look x m').listen().onChange(() => { own2d.look = [cam.x, cam.y]; r2d()?.look([cam.x, cam.y]) })
+      rf.add(cam, 'y', -5, 30, 0.1).name('look y m').listen().onChange(() => { own2d.look = [cam.x, cam.y]; r2d()?.look([cam.x, cam.y]) })
+      const lf = rf.addFolder('layers')
+      own2d.layers = own2d.layers.map(l => (typeof l === 'string' ? { name: l, sort: false, parallax: [1, 1] } : { sort: false, parallax: [1, 1], ...l }))
+      for (const l of own2d.layers) {
+        const f = lf.addFolder(l.name)
+        const setParallax = () => r2d()?.parallax(l.name, l.parallax[0], l.parallax[1])
+        f.add(l.parallax, 0, -1, 2, 0.01).name('parallax x').onChange(setParallax)
+        f.add(l.parallax, 1, -1, 2, 0.01).name('parallax y').onChange(setParallax)
+        f.add(l, 'sort').onChange(v => { const c = r2d()?.layer(l.name); if (c) c.sortableChildren = v })
+      }
+      lf.close()
+      const look2d = { fit: main.world.render2d.fit ?? 'none', background: own2d.background }
+      rf.add(look2d, 'fit', ['none', 'window', 'integer', 'contain']).name('fit (reloads)').onChange(v => reload('fit', v))
+      rf.addColor(look2d, 'background').onChange(v => { own2d.background = v; r2d()?.background(parseInt(v.slice(1), 16)) })
+      rf.add({ copy: () => {
+        const out = clone(own2d)
+        out.fit = look2d.fit === 'none' ? undefined : look2d.fit
+        navigator.clipboard?.writeText(JSON.stringify(out, null, 2))
+      } }, 'copy').name('copy render2d JSON')
+      rf.add({ reset: () => {
+        into(own2d, clone({ ...file2d, layers: file2d.layers.map(l => (typeof l === 'string' ? { name: l, sort: false, parallax: [1, 1] } : { sort: false, parallax: [1, 1], ...l })) }))
+        Object.assign(scale, { x: own2d.ground[0][0], y: own2d.ground[1][1], upX: own2d.up[0], upY: own2d.up[1] })
+        setScale()
+        r2d()?.zoom(own2d.zoom)
+        r2d()?.look([...own2d.look])
+        for (const l of own2d.layers) {
+          r2d()?.parallax(l.name, l.parallax[0], l.parallax[1])
+          const c = r2d()?.layer(l.name)
+          if (c) c.sortableChildren = l.sort
+        }
+        look2d.background = own2d.background
+        r2d()?.background(parseInt(own2d.background.slice(1), 16))
+        for (const c of rf.controllersRecursive()) c.updateDisplay()
+        if ((main.world.render2d.fit ?? 'none') !== (file2d.fit ?? 'none')) reload('fit', file2d.fit ?? 'none')
+      } }, 'reset').name('reset render2d to the file')
+
+      let last = performance.now(), owed = 0
+      const loop = async now => {
+        owed += Math.min((now - last) / 1000, 0.25)
+        last = now
+        // A frame that throws is logged, and the next frame goes on.
+        try {
+          page.input()
+          while (owed >= dt) { truth.step(dt); owed -= dt }
+          await page.frame(owed / dt)
+          const c = r2d()?.camera()
+          if (c) Object.assign(cam, { zoom: c.zoom, x: c.look[0], y: c.look[1] })
+        } catch (e) { console.error(e) }
+        requestAnimationFrame(loop)
+      }
+      requestAnimationFrame(loop)
+    </script>
+  </body>
+</html>

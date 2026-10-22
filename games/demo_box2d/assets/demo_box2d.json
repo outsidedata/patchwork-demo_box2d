@@ -1,0 +1,43 @@
+{
+  "player": {
+    "keys": {
+      "drive": [["ArrowLeft"], ["ArrowRight"]],
+      "explode": [" "],
+      "wind": ["f"]
+    },
+    "spawns": ["crate", "ball", "pill", "gem"],
+    "blast": { "radius": 5, "falloff": 2, "impulsePerLength": 6 }
+  },
+  "car": { "spin": 22, "layer": "bodies", "fill": "#e04f5f", "line": "#ffd0d4", "width": 0.04 },
+  "wind": {
+    "wind": [6, 0],
+    "drag": 1,
+    "lift": 0.5,
+    "kinds": ["crate", "ball", "pill", "gem", "car", "wheel", "head", "torso", "arm", "leg", "bob", "link", "plank", "piston"]
+  },
+  "slide": { "speed": 1.5, "margin": 0.05, "layer": "joints", "fill": "#8a96ad", "width": 0.3 },
+  "ground": {
+    "layer": "scenery",
+    "fill": "#3a4152",
+    "line": "#7d8aa6",
+    "width": 0.05,
+    "depth": 12,
+    "oneWay": { "fill": "#d9a441", "line": "#f3d38a", "alpha": 0.55 }
+  },
+  "zone": { "layer": "scenery", "fill": "#3fae6a", "line": "#7fe0a3", "width": 0.05, "idle": 0.12, "lit": 0.55 },
+  "crate": { "layer": "bodies", "fill": "#c97b4a", "line": "#f0c8a8", "width": 0.04 },
+  "ball": { "layer": "bodies", "fill": "#4aa3c9", "line": "#bfe6f7", "width": 0.04 },
+  "pill": { "layer": "bodies", "fill": "#8bc34a", "line": "#d6f0b5", "width": 0.04 },
+  "gem": { "layer": "bodies", "fill": "#b07ad9", "line": "#e6cff7", "width": 0.04 },
+  "wheel": { "layer": "bodies", "fill": "#2b2b33", "line": "#c8c8d0", "width": 0.06 },
+  "head": { "layer": "bodies", "fill": "#e8d5b5", "line": "#8a7356", "width": 0.04 },
+  "torso": { "layer": "bodies", "fill": "#e8d5b5", "line": "#8a7356", "width": 0.04 },
+  "arm": { "layer": "bodies", "fill": "#e8d5b5", "line": "#8a7356", "width": 0.04 },
+  "leg": { "layer": "bodies", "fill": "#e8d5b5", "line": "#8a7356", "width": 0.04 },
+  "bob": { "layer": "bodies", "fill": "#f2c14e", "line": "#fff0c2", "width": 0.05 },
+  "link": { "layer": "bodies", "fill": "#a0a0a8", "line": "#e0e0e8", "width": 0.03 },
+  "plank": { "layer": "bodies", "fill": "#9c6b3f", "line": "#e0b98f", "width": 0.04 },
+  "piston": { "layer": "bodies", "fill": "#6f8fb3", "line": "#c9dbf0", "width": 0.04 },
+  "swing": { "layer": "joints", "fill": "#c8c8d0", "width": 0.08 },
+  "knot": { "layer": "joints", "fill": "#a0a0a8", "width": 0.07 }
+}

@@ -1,0 +1,223 @@
+{
+  "world": {
+    "defs": "demo_box2d",
+    "loader": {
+      "assets": {
+        "demo_box2d": {
+          "type": "json",
+          "url": "/games/demo_box2d/assets/demo_box2d.json",
+          "preload": true
+        }
+      }
+    },
+    "render2d": {
+      "ground": [[40, 0], [0, -40]],
+      "up": [0, -40],
+      "zoom": 0.45,
+      "look": [0, 13],
+      "layers": ["scenery", "joints", "bodies"],
+      "background": "#1b2230"
+    },
+    "pancamera": {
+      "speed": 18,
+      "edge": 12,
+      "keys": { "left": "a", "right": "d", "up": "w", "down": "s" },
+      "zooms": [0.25, 0.35, 0.45, 0.7, 1, 1.4, 2, 3],
+      "notch": 100,
+      "bounds": [[-34, 0], [34, 25]]
+    },
+    "box2d": {
+      "gravity": [0, -10],
+      "subStepCount": 4,
+      "contactHertz": 30,
+      "contactDampingRatio": 10,
+      "enableSleep": true,
+      "enableContinuous": true,
+      "static": [
+        {
+          "pos": [0, 0], "rot": [1, 0],
+          "shapes": [{ "chain": { "points": [34, 30, 34, 0, -34, 0, -34, 30], "isLoop": false, "ghost1": [34, 31], "ghost2": [-34, 31] }, "material": { "friction": 0.8 } }]
+        },
+        { "pos": [-4, 5], "rot": [1, 0], "shapes": [{ "box": [4, 0.12], "oneWay": [0, 1], "material": { "friction": 0.6 } }] },
+        { "pos": [17, 0], "rot": [1, 0], "shapes": [{ "polygon": { "points": [-0.8, 0, 0.8, 0, 0, 1.2] }, "material": { "friction": 0.6 } }] },
+        { "pos": [26, 0], "rot": [1, 0], "shapes": [{ "polygon": { "points": [-3.5, 0, 3, 0, 3, 2.5] }, "material": { "friction": 0.8 } }] },
+        { "pos": [31.5, 0.25], "rot": [1, 0], "shapes": [{ "box": [1.3, 0.25], "material": { "friction": 0.6 } }] },
+        { "pos": [-21, 15], "rot": [1, 0], "shapes": [{ "circle": { "center": [0, 0], "radius": 0.25 } }] },
+        { "pos": [-27.5, 15], "rot": [1, 0], "shapes": [{ "circle": { "center": [0, 0], "radius": 0.25 } }] }
+      ],
+      "kinds": {
+        "crate": { "type": "dynamic", "shapes": [{ "box": [0.4, 0.4], "density": 1, "material": { "friction": 0.6, "restitution": 0.05 }, "enableSensorEvents": true }] },
+        "ball": { "type": "dynamic", "shapes": [{ "circle": { "center": [0, 0], "radius": 0.4 }, "density": 1, "material": { "friction": 0.6, "restitution": 0.5, "rollingResistance": 0.02 }, "enableSensorEvents": true }] },
+        "pill": { "type": "dynamic", "shapes": [{ "capsule": { "center1": [-0.35, 0], "center2": [0.35, 0], "radius": 0.25 }, "density": 1, "material": { "friction": 0.6, "restitution": 0.1 }, "enableSensorEvents": true }] },
+        "gem": { "type": "dynamic", "shapes": [{ "polygon": { "points": [0.5, 0, 0.25, 0.43, -0.25, 0.43, -0.5, 0, -0.25, -0.43, 0.25, -0.43] }, "density": 1, "material": { "friction": 0.6, "restitution": 0.1 }, "enableSensorEvents": true }] },
+        "car": { "type": "dynamic", "shapes": [{ "polygon": { "points": [-1.6, -0.25, 1.6, -0.25, 1.6, 0.1, 0.7, 0.55, -0.9, 0.55, -1.6, 0.2] }, "density": 1.5, "material": { "friction": 0.6 }, "enableSensorEvents": true }] },
+        "wheel": { "type": "dynamic", "shapes": [{ "circle": { "center": [0, 0], "radius": 0.45 }, "density": 1.2, "material": { "friction": 1.4 }, "enableSensorEvents": true }] },
+        "head": { "type": "dynamic", "shapes": [{ "circle": { "center": [0, 0], "radius": 0.3 }, "density": 1, "material": { "friction": 0.6 }, "filter": { "groupIndex": -1 }, "enableSensorEvents": true }] },
+        "torso": { "type": "dynamic", "shapes": [{ "capsule": { "center1": [0, -0.45], "center2": [0, 0.45] , "radius": 0.22 }, "density": 1, "material": { "friction": 0.6 }, "filter": { "groupIndex": -1 }, "enableSensorEvents": true }] },
+        "arm": { "type": "dynamic", "shapes": [{ "capsule": { "center1": [0, -0.35], "center2": [0, 0.35], "radius": 0.1 }, "density": 1, "material": { "friction": 0.6 }, "filter": { "groupIndex": -1 }, "enableSensorEvents": true }] },
+        "leg": { "type": "dynamic", "shapes": [{ "capsule": { "center1": [0, -0.4], "center2": [0, 0.4], "radius": 0.13 }, "density": 1, "material": { "friction": 0.6 }, "filter": { "groupIndex": -1 }, "enableSensorEvents": true }] },
+        "bob": { "type": "dynamic", "shapes": [{ "circle": { "center": [0, 0], "radius": 0.6 }, "density": 2, "material": { "friction": 0.4, "restitution": 0.2 }, "enableSensorEvents": true }] },
+        "link": { "type": "dynamic", "shapes": [{ "circle": { "center": [0, 0], "radius": 0.18 }, "density": 1, "material": { "friction": 0.4 }, "enableSensorEvents": true }] },
+        "plank": { "type": "dynamic", "shapes": [{ "box": [4, 0.12], "density": 1, "material": { "friction": 0.7 }, "enableSensorEvents": true }] },
+        "piston": { "type": "dynamic", "shapes": [{ "box": [1.2, 0.2], "density": 1, "material": { "friction": 0.7 }, "enableSensorEvents": true }] },
+        "zone": { "type": "static", "shapes": [{ "box": [2, 1.5], "isSensor": true, "enableSensorEvents": true }] }
+      },
+      "joints": {
+        "axle": {
+          "type": "wheel", "localFrameB": { "pos": [0, 0], "rot": [0, 1] },
+          "enableSpring": true, "hertz": 5, "dampingRatio": 0.7,
+          "enableLimit": true, "lowerTranslation": -0.25, "upperTranslation": 0.25,
+          "enableMotor": true, "maxMotorTorque": 30
+        },
+        "neck": { "type": "revolute", "localFrameA": { "pos": [0, 0.67], "rot": [1, 0] }, "localFrameB": { "pos": [0, -0.3], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": -0.6, "upperAngle": 0.6, "enableMotor": true, "maxMotorTorque": 1 },
+        "shoulder": { "type": "revolute", "localFrameA": { "pos": [0, 0.45], "rot": [1, 0] }, "localFrameB": { "pos": [0, 0.35], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": -2.5, "upperAngle": 2.5, "enableMotor": true, "maxMotorTorque": 1 },
+        "elbow": { "type": "revolute", "localFrameA": { "pos": [0, -0.35], "rot": [1, 0] }, "localFrameB": { "pos": [0, 0.35], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": 0, "upperAngle": 2.6, "enableMotor": true, "maxMotorTorque": 1 },
+        "hip": { "type": "revolute", "localFrameA": { "pos": [0, -0.45], "rot": [1, 0] }, "localFrameB": { "pos": [0, 0.4], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": -0.6, "upperAngle": 2.2, "enableMotor": true, "maxMotorTorque": 1 },
+        "knee": { "type": "revolute", "localFrameA": { "pos": [0, -0.4], "rot": [1, 0] }, "localFrameB": { "pos": [0, 0.4], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": -2.4, "upperAngle": 0, "enableMotor": true, "maxMotorTorque": 1 },
+        "swing": { "type": "revolute", "localFrameA": { "pos": [0, 0], "rot": [1, 0] }, "localFrameB": { "pos": [0, 6], "rot": [1, 0] } },
+        "knot": { "type": "distance", "length": 0.5 },
+        "pivot": { "type": "revolute", "localFrameA": { "pos": [0, 1.2], "rot": [1, 0] }, "localFrameB": { "pos": [0, -0.17], "rot": [1, 0] }, "enableLimit": true, "lowerAngle": -0.28, "upperAngle": 0.28 },
+        "slide": {
+          "type": "prismatic", "localFrameA": { "pos": [0, 0.25], "rot": [0, 1] }, "localFrameB": { "pos": [0, -0.2], "rot": [0, 1] },
+          "enableLimit": true, "lowerTranslation": 0.1, "upperTranslation": 4,
+          "enableMotor": true, "maxMotorForce": 600
+        }
+      }
+    }
+  },
+  "plugins": [
+    "loader",
+    "scenemanager",
+    "player",
+    "box2d",
+    "render2d",
+    "pancamera",
+    "stats"
+  ],
+  "seats": 1,
+  "prefabs": {
+    "engine": {
+      "dt": 0.016666666666666666,
+      "width": 1280,
+      "height": 720
+    },
+    "scenemanager": {
+      "out": {}
+    },
+    "loader": {},
+    "box2d": {},
+    "player": { "seat": 0, "held": null, "next": 0 },
+    "ground": {},
+    "wind": { "on": false },
+    "crate": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "ball": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "pill": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "gem": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "car": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true, "drive": 0 },
+    "wheel": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "head": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "torso": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "arm": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "leg": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "bob": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "link": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "plank": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "piston": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "zone": { "pos": [0, 0], "rot": [1, 0], "vel": [0, 0], "spin": 0, "awake": true },
+    "axle": { "a": 0, "b": 0, "motorSpeed": 0 },
+    "neck": { "a": 0, "b": 0 },
+    "shoulder": { "a": 0, "b": 0 },
+    "elbow": { "a": 0, "b": 0 },
+    "hip": { "a": 0, "b": 0 },
+    "knee": { "a": 0, "b": 0 },
+    "swing": { "a": 0, "b": 0 },
+    "knot": { "a": 0, "b": 0 },
+    "pivot": { "a": 0, "b": 0 },
+    "slide": { "a": 0, "b": 0, "motorSpeed": 0 }
+  },
+  "actors": [
+    { "is": "scenemanager" },
+    { "is": "loader" },
+    { "is": "box2d" },
+    { "is": "ground" },
+    { "is": "wind" },
+    { "is": "zone", "pos": [3.5, 1.5] },
+
+    { "is": "car", "pos": [10, 0.95] },
+    { "is": "wheel", "pos": [8.85, 0.45] },
+    { "is": "wheel", "pos": [11.15, 0.45] },
+    { "is": "axle", "a": 7, "b": 8, "localFrameA": { "pos": [-1.15, -0.5], "rot": [0, 1] } },
+    { "is": "axle", "a": 7, "b": 9, "localFrameA": { "pos": [1.15, -0.5], "rot": [0, 1] } },
+
+    { "is": "plank", "pos": [17, 1.37] },
+    { "is": "pivot", "a": -3, "b": 12 },
+
+    { "is": "piston", "pos": [31.5, 0.8] },
+    { "is": "slide", "a": -5, "b": 14 },
+
+    { "is": "bob", "pos": [-15.218652, 13.395006], "rot": [0.267499, 0.963558] },
+    { "is": "swing", "a": -6, "b": 16 },
+
+    { "is": "torso", "pos": [-12, 2.18] },
+    { "is": "head", "pos": [-12, 3.15] },
+    { "is": "arm", "pos": [-12, 2.28] },
+    { "is": "arm", "pos": [-12, 1.58] },
+    { "is": "arm", "pos": [-12, 2.28] },
+    { "is": "arm", "pos": [-12, 1.58] },
+    { "is": "leg", "pos": [-12, 1.33] },
+    { "is": "leg", "pos": [-12, 0.53] },
+    { "is": "leg", "pos": [-12, 1.33] },
+    { "is": "leg", "pos": [-12, 0.53] },
+    { "is": "neck", "a": 18, "b": 19 },
+    { "is": "shoulder", "a": 18, "b": 20 },
+    { "is": "elbow", "a": 20, "b": 21 },
+    { "is": "shoulder", "a": 18, "b": 22 },
+    { "is": "elbow", "a": 22, "b": 23 },
+    { "is": "hip", "a": 18, "b": 24 },
+    { "is": "knee", "a": 24, "b": 25 },
+    { "is": "hip", "a": 18, "b": 26 },
+    { "is": "knee", "a": 26, "b": 27 },
+
+    { "is": "link", "pos": [-27.5, 14.5] },
+    { "is": "link", "pos": [-27.5, 14] },
+    { "is": "link", "pos": [-27.5, 13.5] },
+    { "is": "link", "pos": [-27.5, 13] },
+    { "is": "link", "pos": [-27.5, 12.5] },
+    { "is": "link", "pos": [-27.5, 12] },
+    { "is": "link", "pos": [-27.5, 11.5] },
+    { "is": "link", "pos": [-27.5, 11] },
+    { "is": "link", "pos": [-27.5, 10.5] },
+    { "is": "link", "pos": [-27.5, 10] },
+    { "is": "link", "pos": [-27.5, 9.5] },
+    { "is": "link", "pos": [-27.5, 9] },
+    { "is": "knot", "a": -7, "b": 37 },
+    { "is": "knot", "a": 37, "b": 38 },
+    { "is": "knot", "a": 38, "b": 39 },
+    { "is": "knot", "a": 39, "b": 40 },
+    { "is": "knot", "a": 40, "b": 41 },
+    { "is": "knot", "a": 41, "b": 42 },
+    { "is": "knot", "a": 42, "b": 43 },
+    { "is": "knot", "a": 43, "b": 44 },
+    { "is": "knot", "a": 44, "b": 45 },
+    { "is": "knot", "a": 45, "b": 46 },
+    { "is": "knot", "a": 46, "b": 47 },
+    { "is": "knot", "a": 47, "b": 48 },
+
+    { "is": "crate", "pos": [-7, 10] },
+    { "is": "ball", "pos": [-5.4, 10] },
+    { "is": "pill", "pos": [-3.8, 10] },
+    { "is": "gem", "pos": [-2.2, 10] },
+    { "is": "ball", "pos": [-6.6, 11.4] },
+    { "is": "pill", "pos": [-5, 11.4] },
+    { "is": "gem", "pos": [-3.4, 11.4] },
+    { "is": "crate", "pos": [-1.8, 11.4] },
+    { "is": "pill", "pos": [-7, 12.8] },
+    { "is": "gem", "pos": [-5.4, 12.8] },
+    { "is": "crate", "pos": [-3.8, 12.8] },
+    { "is": "ball", "pos": [-2.2, 12.8] },
+    { "is": "gem", "pos": [-6.6, 14.2] },
+    { "is": "crate", "pos": [-5, 14.2] },
+    { "is": "ball", "pos": [-3.4, 14.2] },
+    { "is": "pill", "pos": [-1.8, 14.2] }
+  ]
+}
